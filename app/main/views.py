@@ -1,37 +1,17 @@
-from flask import render_template,request,redirect,url_for,abort
+from flask import  render_template,redirect,request,url_for,abort,flash
 from . import main
-from flask_login import login_required
-from ..models import User,Blog
-from .forms import BlogForm
-from .. import db
-from ..request import *
+from app.models import BlogPost
+from ..requests import get_quotes
 
 @main.route('/')
 def index():
+    '''
+    This is the home page view.
+    '''
+    myquote = get_quotes()
+    quote = myquote['quote']
+    quote_author = myquote['author']
 
-    title = 'Home Page - Welcome to wat Blogs, your daily inspiration'
-
-    index=Blog.query.all()
-
-    first=Blog.query.limit(1).all()
-
-    popular = get_quote('popular')
-
-    return render_template('index.html', title=title,popular=popular,index=index,first=first)
-
-@main.route('/new_blog', methods = ['GET','POST'])
-@login_required
-def new_blog():
-	form = BlogForm()
-	if form.validate_on_submit():
-		blog = Blog(post=form.post.data,body=form.body.data)
-		blog.save_blog()
-		return redirect(url_for('main.index'))
-	return render_template('new_blog.html',form=form)
-
-@main.route('/view_blogs', methods = ['GET','POST'])
-def view_blogs():
-
-	first=Blog.query.limit(1).all()
-
-	return render_template('view_blogs.html',first=first)
+    page = request.args.get('page', 1, type=int)
+    blog_posts = BlogPost.query.order_by(BlogPost.date.desc()).paginate(page=page, per_page=10)
+    return render_template('index.html',blog_posts=blog_posts,quote = quote,quote_author = quote_author)

@@ -1,93 +1,64 @@
-from . import db
+from . import db,login_manager
 from werkzeug.security import generate_password_hash,check_password_hash
 from flask_login import UserMixin
-from . import login_manager
 from datetime import datetime
+#models
+
+
 
 @login_manager.user_loader
 def load_user(user_id):
-	return User.query.get(int(user_id))
+    return User.query.get(user_id)
 
-class User(UserMixin,db.Model):
-	__tablename__ = 'users'
-	id  = db.Column(db.Integer,primary_key = True)
-	username = db.Column(db.String(255))
-	role_id = db.Column(db.Integer,db.ForeignKey('roles.id'))
-	email = db.Column(db.String(255),unique = True,index = True)
-	password_hash = db.Column(db.String(255))
-	pass_secure = db.Column(db.String(255))
-	blogs = db.relationship('Blog',backref='blogs',lazy="dynamic")
-	# comments = db.relationship('Comment',backref='comments',lazy="dynamic")
+class User(db.Model,UserMixin):
 
-	@property
-	def password(self):
+    __tablename__ = 'users'
 
-		raise AttributeError('Cant read')
+    id = db.Column(db.Integer,primary_key=True)
+    profile_image = db.Column(db.String(64),nullable=False,default='default_profile.png')
+    email = db.Column(db.String(64),unique=True,index=True)
+    username = db.Column(db.String(64),unique=True,index=True)
+    password_hash = db.Column(db.String(128))
 
-	@password.setter
-	def password(self,password):
+    posts = db.relationship('BlogPost',backref='author',lazy=True)
 
-		self.pass_secure = generate_password_hash(password)
-
-	def  verify_password(self,password):
-		return check_password_hash(self.pass_secure,password)
-
-		
-
-	def __repr__(self):
-
-		return f'User {self.username}'
-
-class Role(db.Model):
-	__tablename__ = 'roles'
-
-	id  = db.Column(db.Integer,primary_key =True)
-	name= db.Column(db.String(255))
-	user_id = db.relationship('User',backref = 'role',lazy="dynamic")
-
-	def __repr__(self):
-
-		return f'User {self.name}'
-
-class Blog(UserMixin,db.Model):
-
-	__tablename__ = 'blogs'
-
-	id = db.Column(db.Integer,primary_key=True)
-	post = db.Column(db.String(255))
-	body = db.Column(db.String(1000))
-	category = db.Column(db.String(1000))
-	date_posted = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-	user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
-	# comments = db.relationship('Comment',backref = 'blog',lazy = "dynamic")
-
-	def save_blog(self):
-		db.session.add(self)
-		db.session.commit()
-
-# class Comment(UserMixin,db.Model):
-# 	"""docstring for Comment"""
-# 	__tablename__ = 'comments'
-# 	id = db.Column(db.Integer, primary_key=True)
-# 	title = db.Column(db.String(255))
-# 	comments = db.Column(db.String(1000))
-# 	date_posted = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-# 	blog_id = db.Column(db.Integer, db.ForeignKey("blogs.id"))
-# 	user_id = db.Column(db.Integer,db.ForeignKey('users.id'))
+    def __init__(self,email,username,password):
+        self.email = email
+        self.username = username
+        self.password_hash = generate_password_hash(password)
 
 
-	def save_comment(self):
-		db.session.add(self)
-		db.session.commit()
 
 
-class Popular:
-
-	'''
-	News class to define Objects
-	'''
-	def __init__(self, author, quote):
+    def check_password(self,password):
+         return check_password_hash(self.password_hash,password)
 
 
-		self.author = author
-		self.quote = quote
+    def __repr__(self):
+         return f"Username {self.username}"
+
+
+class BlogPost(db.Model):
+    users = db.relationship(User)
+
+    id = db.Column(db.Integer,primary_key=True)
+    user_id = db.Column(db.Integer,db.ForeignKey ('users.id'),nullable=False)
+    date = db.Column(db.DateTime,nullable=False,default=datetime.utcnow)
+    title = db.Column(db.String(140),nullable=False)
+    text = db.Column(db.Text,nullable=False)
+
+    def __init__(self,title,text,user_id):
+        self.title = title
+        self.text = text
+        self.user_id = user_id
+    def __repr__(self):
+        return f"Post ID: {self.id} -- Date: {self.date}"
+
+class Quote:
+
+
+    def __init__(self,id,quote,author):
+        self.id = id
+        self.quote = quote
+        self.author = author
+
