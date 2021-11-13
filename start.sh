@@ -1,6 +1,3 @@
-export SECRET_KEY=mwendaB
-export MAIL_USERNAME=brianmwendah12@gmail.com
-export MAIL_PASSWORD=bryangarizo@gmail.com
-
+export SECRET_KEY='wati'
 
 python3 manage.py server
