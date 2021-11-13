@@ -17,19 +17,13 @@ class User(UserMixin, db.Model):
     bio = db.Column(db.String())
     avatar_path = db.Column(db.String())
     password_hash = db.Column(db.String(255))
-    posts = db.relationship("Post",
-                            backref = "user",
-                            lazy = "dynamic")
-    comments = db.relationship("Comment",
-                                backref = "user",
-                                lazy = "dynamic")
-    liked = db.relationship("PostLike",
-                            backref = "user", 
-                            lazy = "dynamic")
+    posts = db.relationship("Post", backref = "user",lazy = "dynamic")
+    comments = db.relationship("Comment", backref = "user",lazy = "dynamic")
+    liked = db.relationship("PostLike",backref = "user", lazy = "dynamic")
 
     @property
     def password(self):
-        raise AttributeError("You cannot read the password attribute")
+        raise AttributeError("Cannot read the password attribute")
 
     @password.setter
     def password(self, password):
@@ -73,10 +67,7 @@ class Post(db.Model):
     downvotes = db.Column(db.Integer, default = 0)
     post_by = db.Column(db.String)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
-    comments = db.relationship("Comment", 
-                                foreign_keys = "Comment.post_id", 
-                                backref = "post", 
-                                lazy = "dynamic")
+    comments = db.relationship("Comment", foreign_keys = "Comment.post_id",  backref = "post", lazy = "dynamic")
 
     def save_post(self):
         db.session.add(self)
