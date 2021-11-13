@@ -1,12 +1,13 @@
-from app import requests
+import requests
+from .models import Quote
 
-def get_quotes():
-    '''
-    Fetches and returns random quotes from api
-    '''
+url = "http://quotes.stormconsultancy.co.uk/random.json"
 
-    url = 'http://quotes.stormconsultancy.co.uk/random.json'
-    response = requests.get(url)
-    quote = response.json()
+def get_quote():
+    """
+    Function to consume http request and return a Quote class instance
+    """
+    response = requests.get(url).json()
 
-    return quote
+    random_quote = Quote(response.get("author"), response.get("quote"))
+    return random_quote
