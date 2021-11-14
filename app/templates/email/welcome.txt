@@ -1,3 +1,2 @@
-Thank you for subscribing to my blog. You will receive notification emails every time I make a new post.
-
-Brian Mwenda.
+Hello {{user.username}}, Mwenda Blog.
+You have joined a great blogging platform where you would be able to recieve blogs updates regularly

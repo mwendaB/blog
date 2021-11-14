@@ -1,136 +1,104 @@
-from . import db
-from werkzeug.security import (generate_password_hash, check_password_hash)
-from flask_login import UserMixin
-from . import login_manager
+from . import db,login_manager
+from flask_login import current_user,UserMixin
+from werkzeug.security import generate_password_hash,check_password_hash
+from datetime import datetime
 
 @login_manager.user_loader
-def user_loader(user_id):
-    return User.query.get(int(user_id))
+def load_user(user_id):
+    return User.query.get(user_id)
 
-class User(UserMixin, db.Model):
+class User (UserMixin,db.Model):
     __tablename__ = 'users'
-    id = db.Column(db.Integer, primary_key = True)
-    first_name = db.Column(db.String(255))
-    last_name = db.Column(db.String(255))
-    username = db.Column(db.String(255), unique = True)
-    email = db.Column(db.String(255), unique = True, index = True)
-    bio = db.Column(db.String())
-    avatar_path = db.Column(db.String())
-    password_hash = db.Column(db.String(255))
-    posts = db.relationship("Post", backref = "user",lazy = "dynamic")
-    comments = db.relationship("Comment", backref = "user",lazy = "dynamic")
-    liked = db.relationship("PostLike",backref = "user", lazy = "dynamic")
-
+    id = db.Column(db.Integer,primary_key = True)
+    username = db.Column(db.String(255),unique = True,nullable = False)
+    email = db.Column(db.String(255), unique = True,nullable = False)
+    bio = db.Column(db.String(255),default ='My default Bio')
+    profile_pic_path = db.Column(db.String(150),default ='default.png')
+    hashed_password = db.Column(db.String(255),nullable = False)
+    blog = db.relationship('Blog', backref='user', lazy='dynamic')
+    comment = db.relationship('Comment', backref='user', lazy='dynamic')
+    
     @property
-    def password(self):
-        raise AttributeError("Cannot read the password attribute")
+    def set_password(self):
+        raise AttributeError('You cannot read the password attribute')
 
-    @password.setter
+    @set_password.setter
     def password(self, password):
-        self.password_hash = generate_password_hash(password)
-
-    def verify_password(self, password):
-        return check_password_hash(self.password_hash, password)
-
-    # User like logic
-    def like_post(self, post):
-        if not self.has_liked_post(post):
-            like = PostLike(user_id = self.id, post_id = post.id)
-            db.session.add(like)
-
-    # User dislike logic
-    def unlike_post(self, post):
-        if self.has_liked_post(post):
-            PostLike.query.filter_by(
-                user_id = self.id,
-                post_id = post.id).delete()
-
-    # Check if user has liked post
-    def has_liked_post(self, post):
-        return PostLike.query.filter(
-            PostLike.user_id == self.id,
-            PostLike.post_id == post.id).count() > 0
-
-    # string representaion to print out a row of a column, important in debugging
-    def __repr__(self):
-        return f"User {self.username}"
+        self.hashed_password = generate_password_hash(password)
 
 
-class Post(db.Model):
-    __tablename__ = "posts"
+    def verify_password(self,password):
+        return check_password_hash(self.hashed_password,password)
 
-    id = db.Column(db.Integer, primary_key = True)
-    post_title = db.Column(db.String)
-    post_content = db.Column(db.Text)
-    posted_at = db.Column(db.DateTime)
-    upvotes = db.Column(db.Integer, default = 0)
-    downvotes = db.Column(db.Integer, default = 0)
-    post_by = db.Column(db.String)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
-    comments = db.relationship("Comment", foreign_keys = "Comment.post_id",  backref = "post", lazy = "dynamic")
-
-    def save_post(self):
+    def save(self):
         db.session.add(self)
         db.session.commit()
-
-    def delete_post(self):
+    def delete(self):
         db.session.delete(self)
         db.session.commit()
 
-    @classmethod
-    def get_user_posts(cls,id):
-        posts = Post.query.filter_by(user_id = id).order_by(Post.posted_at.desc()).all()
-        return posts
+    def __repr__(self):
+        return "User: %s" %str(self.username)
 
-    @classmethod
-    def get_all_posts(cls):
-        return Post.query.order_by(Post.posted_at).all()
+class Blog(db.Model):
+    __tablename__ = 'blogs'
+    id = db.Column(db.Integer,primary_key=True)
+    title = db.Column(db.String(255),nullable=False)
+    content = db.Column(db.Text(),nullable=False)
+    posted = db.Column(db.DateTime,default=datetime.utcnow)
+    user_id = db.Column(db.Integer,db.ForeignKey("users.id"))
+    comment = db.relationship('Comment', backref='blog', lazy='dynamic')
 
-
-class Comment(db.Model):
-    __tablename__ = "comments"
-
-    id = db.Column(db.Integer, primary_key = True)
-    comment = db.Column(db.String)
-    comment_at = db.Column(db.DateTime)
-    comment_by = db.Column(db.String)
-    like_count = db.Column(db.Integer, default = 0)
-    post_id = db.Column(db.Integer, db.ForeignKey("posts.id"))
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
-
-    def save_comment(self):
+    def save(self):
         db.session.add(self)
         db.session.commit()
 
-    @classmethod
-    def delete_comment(cls, id):
-        gone = Comment.query.filter_by(id = id).first()
-        db.session.delete(gone)
+    def delete(self):
+        db.session.delete(self)
         db.session.commit()
 
-    @classmethod
-    def get_comments(cls,id):
-        comments = Comment.query.filter_by(post_id = id).all()
-        return comments
+    def get_blog(id):
+        blog = Blog.query.filter_by(id=id).first()
+
+        return blog
+
+    def __repr__(self):
+        return f'Blog {self.title}'
+
+class Comment(db.Model):
+    __tablename__='comments'
+
+    id = db.Column(db.Integer,primary_key = True)
+    comment = db.Column(db.String)
+    posted = db.Column(db.DateTime,default=datetime.utcnow)
+    blog_id = db.Column(db.Integer,db.ForeignKey("blogs.id"))
+    user_id = db.Column(db.Integer,db.ForeignKey("users.id"))
+
+    def save(self):
+        db.session.add(self)
+        db.session.commit()
+
+    def delete(self):
+        db.session.delete(self)
+        db.session.commit()
+
+    def get_comment(id):
+        comment = Comment.query.all(id=id)
+        return comment
 
 
-class Subscribers(db.Model):
-    __tablename__ = "subscribers"
-    id = db.Column(db.Integer, primary_key = True)
-    email = db.Column(db.String(255), unique = True, index = True)
+    def __repr__(self):
+        return f'Comment {self.comment}'
 
+class Subscriber(db.Model):
+    __tablename__='subscribers'
 
-class PostLike(db.Model):
-    __tablename__ = "post_like"
-    id = db.Column(db.Integer, primary_key = True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
-    post_id = db.Column(db.Integer, db.ForeignKey("posts.id"))
+    id=db.Column(db.Integer,primary_key=True)
+    email = db.Column(db.String(255),unique=True,index=True)
 
+    def save_subscriber(self):
+        db.session.add(self)
+        db.session.commit()
 
-class Quote:
-    """
-    Blueprint class for quotes consumed from API
-    """
-    def __init__(self, author, quote):
-        self.author = author
-        self.quote = quote
+    def __repr__(self):
+        return f'Subscriber {self.email}'

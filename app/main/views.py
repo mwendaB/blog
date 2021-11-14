@@ -1,161 +1,153 @@
-from flask import (render_template, request, redirect, url_for, abort)
-from . import main
-from ..models import User, Comment, Post, Subscribers
-from flask_login import login_required, current_user
-from .forms import (UpdateProfile, PostForm, CommentForm, UpdatePostForm)
-from datetime import datetime
-import bleach
+from flask import render_template,redirect,url_for,abort,request,flash
+from app.main import main
+from app.models import User,Blog,Comment,Subscriber
+from .forms import UpdateProfile,CreateBlog
 from .. import db
-from ..requests import get_quote
-from ..email import welcome_message, notification_message
+from app.requests import get_quotes
+from flask_login import login_required,current_user
+from ..email import mail_message
+import secrets
+import os
+from PIL import Image
+import markdown2  
 
-@main.route("/", methods = ["GET", "POST"])
+@main.route('/')
 def index():
-    posts = Post.get_all_posts()
-    quote = get_quote()
-
-    if request.method == "POST":
-        new_sub = Subscribers(email = request.form.get("subscriber"))
-        db.session.add(new_sub)
-        db.session.commit()
-        welcome_message("Thank you for subscribing to the Mwenda blog", 
-                        "email/welcome", new_sub.email)
-    return render_template("index.html",posts = posts, quote = quote)
-
-@main.route("/post/<int:id>", methods = ["POST", "GET"])
-def post(id):
-    post = Post.query.filter_by(id = id).first()
-    comments = Comment.query.filter_by(post_id = id).all()
-    comment_form = CommentForm()
-    comment_count = len(comments)
-
-    if comment_form.validate_on_submit():
-        comment = comment_form.comment.data
-        comment_form.comment.data = ""
-        comment_alias = comment_form.alias.data
-        comment_form.alias.data = ""
-        if current_user.is_authenticated:
-            comment_alias = current_user.username
-        new_comment = Comment(comment = comment, 
-                            comment_at = datetime.now(),
-                            comment_by = comment_alias,
-                            post_id = id)
-        new_comment.save_comment()
-        return redirect(url_for("main.post", id = post.id))
-
-    return render_template("post.html",
-                            post = post,
-                            comments = comments,
-                            comment_form = comment_form,
-                            comment_count = comment_count)
-
-@main.route("/post/<int:id>/<int:comment_id>/delete")
-def delete_comment(id, comment_id):
-    post = Post.query.filter_by(id = id).first()
-    comment = Comment.query.filter_by(id = comment_id).first()
-    db.session.delete(comment)
-    db.session.commit()
-    return redirect(url_for("main.post", id = post.id))
-
-@main.route("/post/<int:id>/<int:comment_id>/favourite")
-def fav_comment(id, comment_id):
-    post = Post.query.filter_by(id = id).first()
-    comment = Comment.query.filter_by(id = comment_id).first()
-    comment.like_count = 1
-    db.session.add(comment)
-    db.session.commit()
-    return redirect(url_for('main.post', id = post.id))
-
-@main.route("/post/<int:id>/update", methods = ["POST", "GET"])
-@login_required
-def edit_post(id):
-    post = Post.query.filter_by(id = id).first()
-    edit_form = UpdatePostForm()
-
-    if edit_form.validate_on_submit():
-        post.post_title = edit_form.title.data
-        edit_form.title.data = ""
-        post.post_content = edit_form.post.data
-        edit_form.post.data = ""
-
-        db.session.add(post)
-        db.session.commit()
-        return redirect(url_for("main.post", id = post.id))
-
-    return render_template("edit_post.html", 
-                            post = post,
-                            edit_form = edit_form)
-
-@main.route("/post/new", methods = ["POST", "GET"])
-@login_required
-def new_post():
-    post_form = PostForm()
-    if post_form.validate_on_submit():
-        post_title = post_form.title.data
-        post_form.title.data = ""
-        post_content = bleach.clean(post_form.post.data, 
-                                    tags = bleach.sanitizer.ALLOWED_TAGS + ["h1", "h2", "h3", "h4",
-                                                                            "h5", "h6", "p", "span",
-                                                                            "div", "br", "em", "strong"
-                                                                            "i", "blockquote", "hr", "a"
-                                                                            "ul", "ol", "li"])
-        post_form.post.data = ""
-        new_post = Post(post_title = post_title,
-                        post_content = post_content,
-                        posted_at = datetime.now(),
-                        post_by = current_user.username,
-                        user_id = current_user.id)
-        new_post.save_post()
-        subs = Subscribers.query.all()
-        for sub in subs:
-            notification_message(post_title, 
-                            "email/notification", sub.email, new_post = new_post)
-            pass
-        return redirect(url_for("main.post", id = new_post.id))
+    quotes = get_quotes()
+    page = request.args.get('page',1, type = int )
+    blogs = Blog.query.order_by(Blog.posted.desc()).paginate(page = page, per_page = 3)
+    return render_template('index.html', quote = quotes,blogs=blogs)
+def save_picture(form_picture):
+    random_hex = secrets.token_hex(8)
+    _, f_ext = os.path.splitext(form_picture.filename)
+    picture_filename = random_hex + f_ext
+    picture_path = os.path.join('app/static/photos', picture_filename)
     
-    return render_template("new_post.html",
-                            post_form = post_form)
+    output_size = (200, 200)
+    i = Image.open(form_picture)
+    i.thumbnail(output_size)
+    i.save(picture_path)
+    return picture_filename
 
-@main.route("/profile/<int:id>", methods = ["POST", "GET"])
-def profile(id):
-    user = User.query.filter_by(id = id).first()
-    posts = Post.query.filter_by(user_id = id).all()
-
-    if request.method == "POST":
-        new_sub = Subscribers(email = request.form.get("subscriber"))
-        db.session.add(new_sub)
-        db.session.commit()
-        welcome_message("Thank you for subscribing to the CM blog", 
-                        "email/welcome", new_sub.email)
-
-    return render_template("profile/profile.html",
-                            user = user,
-                            posts = posts)
-
-@main.route("/profile/<int:id>/<int:post_id>/delete")
+@main.route('/profile',methods = ['POST','GET'])
 @login_required
-def delete_post(id, post_id):
-    user = User.query.filter_by(id = id).first()
-    post = Post.query.filter_by(id = post_id).first()
-    db.session.delete(post)
-    db.session.commit()
-    return redirect(url_for("main.profile", id = user.id))
-
-@main.route("/profile/<int:id>/update", methods = ["POST", "GET"])
-@login_required
-def update_profile(id):
-    user = User.query.filter_by(id = id).first()
+def profile():
     form = UpdateProfile()
     if form.validate_on_submit():
-        user.first_name = form.first_name.data
-        user.last_name = form.last_name.data
-        user.email = form.email.data
-        user.bio = form.bio.data
-
-        db.session.add(user)
+        if form.profile_picture.data:
+            picture_file = save_picture(form.profile_picture.data)
+            current_user.profile_pic_path = picture_file
+        current_user.username = form.username.data
+        current_user.email = form.email.data
+        current_user.bio = form.bio.data
         db.session.commit()
-        return redirect(url_for("main.profile", id = id))
+        flash('Succesfully updated your profile')
+        return redirect(url_for('main.profile'))
+    elif request.method == 'GET':
+        form.username.data = current_user.username
+        form.email.data = current_user.email
+        form.bio.data = current_user.bio
+    profile_pic_path = url_for('static',filename = 'photos/'+ current_user.profile_pic_path) 
+    return render_template('profile/profile.html', profile_pic_path=profile_pic_path, form = form,blog=blog)
+
+@main.route('/user/<name>/updateprofile', methods = ['POST','GET'])
+@login_required
+def updateprofile(name):
+    form = UpdateProfile()
+    user = User.query.filter_by(username = name).first()
+    if user == None:
+        abort(404)
+    if form.validate_on_submit():
+        user.bio = form.bio.data
+        user.save()
+        return redirect(url_for('.profile',name = name))
+    return render_template('profile/updateprofile.html',form =form)
+
+
+@main.route('/new_post', methods=['POST','GET'])
+@login_required
+def new_blog():
+    subscribers = Subscriber.query.all()
+    form = CreateBlog()
+    if form.validate_on_submit():
+        title = form.title.data
+        content = form.content.data
+        user_id =  current_user._get_current_object().id
+        blog = Blog(title=title,content=content,user_id=user_id)
+        blog.save()
+        for subscriber in subscribers:
+            mail_message("New Blog Post","email/new_blog",subscriber.email,blog=blog)
+        return redirect(url_for('main.index'))
+        flash('You Posted a new Blog')
+        
+    return render_template('newblog.html', form = form)
+@main.route('/blog/<id>')
+def blog(id):
+    comments = Comment.query.filter_by(blog_id=id).all()
+    blog = Blog.query.get(id)
+    return render_template('blog.html',blog=blog,comments=comments)
     
-    return render_template("profile/update.html",
-                            user = user,
-                            form = form)
+
+@main.route('/blog/<blog_id>/update', methods = ['GET','POST'])
+@login_required
+def updateblog(blog_id):
+    blog = Blog.query.get(blog_id)
+    if blog.user != current_user:
+        abort(403)
+    form = CreateBlog()
+    if form.validate_on_submit():
+        blog.title = form.title.data
+        blog.content = form.content.data
+        db.session.commit()
+        flash("You have updated your Blog!")
+        return redirect(url_for('main.blog',id = blog.id)) 
+    if request.method == 'GET':
+        form.title.data = blog.title
+        form.content.data = blog.content
+    return render_template('newblog.html', form = form)
+
+
+
+@main.route('/comment/<blog_id>', methods = ['Post','GET'])
+@login_required
+def comment(blog_id):
+    blog = Blog.query.get(blog_id)
+    comment =request.form.get('newcomment')
+    new_comment = Comment(comment = comment, user_id = current_user._get_current_object().id, blog_id=blog_id)
+    new_comment.save()
+    return redirect(url_for('main.blog',id = blog.id))
+def delete_comment(comment_id):
+    if blog.user != current_user:
+        abort(403)
+    comments = Comment.query.get(comment_id)
+    comments.delete()
+    flash("You have deleted your comment succesfully!")
+    return redirect(url_for('main.blog'))
+
+@main.route('/subscribe',methods = ['POST','GET'])
+def subscribe():
+    email = request.form.get('subscriber')
+    new_subscriber = Subscriber(email = email)
+    new_subscriber.save_subscriber()
+    mail_message("Subscribed to Mwenda Blog","email/welcome_subscriber",new_subscriber.email,new_subscriber=new_subscriber)
+    flash('Sucessfuly subscribed')
+    return redirect(url_for('main.index'))
+
+@main.route('/blog/<blog_id>/delete', methods = ['POST'])
+@login_required
+def delete_post(blog_id):
+    blog = Blog.query.get(blog_id) 
+    if blog.user != current_user:
+        abort(403)
+    blog.delete()
+    flash("You have deleted your Blog succesfully!")
+    return redirect(url_for('main.index'))
+
+
+@main.route('/user/<string:username>')
+def user_posts(username):
+    user = User.query.filter_by(username=username).first()
+    page = request.args.get('page',1, type = int )
+    blogs = Blog.query.filter_by(user=user).order_by(Blog.posted.desc()).paginate(page = page, per_page = 4)
+    return render_template('userposts.html',blogs=blogs,user = user)
+

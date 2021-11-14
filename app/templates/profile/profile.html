@@ -1,78 +1,86 @@
 {% extends 'base.html'%}
+{% import 'bootstrap/wtf.html' as wtf %}
 {% block content %}
-<div class="container content">
-    <div class="row profile">
-        <div class="col-md-3">
-            <div class="profile-sidebar position-fixed">
-                <!-- SIDEBAR USERPIC -->
-                {%if user.username == 'brianmwenda'%}
-                <div class="profile-userpic">
-                    <img src="https://avatars.githubusercontent.com/u/87479232?s=96&v=4"
-                        class="img-responsive" alt="" height="250" width="250">
-                </div>
-                {%else%}           
-                <div class="profile-userpic">
-                    <img src=""
-                    class="img-responsive" alt="" height="250" width="250">
-                </div>
-                {%endif%}
-                <!-- SIDEBAR USER TITLE -->
-                <div class="profile-usertitle">
-                    <div class="profile-usertitle-name">
-                        <strong>{{user.first_name}} {{user.last_name}}</strong>
-                    </div>
-                    <div class="profile-usertitle-job">
-                        <small>{{user.username}}</small>
-                    </div>
-                    {%if user.bio%}
-                    <p>{{user.bio}}</p>
-                    {%else%}
-                    <p>No bio</p>
-                    {%endif%}
-                </div>
-             
-                {%if current_user.is_authenticated%}
-                <hr>
-                <div class="profile-usermenu sidebar-sticky">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{url_for('main.update_profile', id = user.id)}}">
-                                <i class="fas fa-user-edit"></i>
-                                Account Settings </a>
-                        </li>
-                    </ul>
-                </div>
-                {%endif%}
-                <!-- END MENU -->
+<div class="container">
+  <div class="row">
+    <div class="col-md-1"></div>
+    <div class="col-md-4">
+        <div class="content-section mt-4">
+            {% for message in get_flashed_messages() %}
+            <div class="alert alert-success">
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            {{ message }}
             </div>
-        </div>
-        <div class="col-md-9">
-            <div class="profile-content">
-                {%for post in posts[::-1]%}
-                <div class="post-preview">
-                    {%if current_user.is_authenticated%}
-                    <div style="float: right; padding-bottom: 50px">
-                        <a href="{{url_for('main.edit_post', id = post.id)}}" class="btn btn-outline-info btn-sm"><i class="far fa-edit"></i></a>
-                        <a href="{{url_for('main.delete_post', id = user.id, post_id = post.id)}}" class="btn btn-outline-danger btn-sm"><i class="far fa-trash-alt"></i></a>
-                    </div>
-                    {%endif%}
-                    <a href="{{url_for('main.post', id = post.id)}}">
-                        <h2 class="post-title">
-                            {{post.post_title}}
-                        </h2>
-                        <h3 class="post-subtitle">
-                            {{post.post_content | truncate(45) | safe}}
-                        </h3>
-                    </a>
-                    <div class="post-meta">Posted by
-                        <a href="/profile/{{post.user_id}}">{{post.post_by}}</a>
-                        on {{post.posted_at.strftime('%B %d, %Y')}}
-                    </div>
-                </div>
-                {%endfor%}
-            </div>
-        </div>
+            {% endfor %}
+            {% if errors %}
+              {% for error in errors %}
+                <span class="text-danger">{{ error }}</span></br>
+              {% endfor %}
+            {%endif%}
+    <div class="card testimonial-card">
+    <div class="card-up indigo lighten-1"></div>
+    <div class="avatar mx-auto white">
+      <img src="{{profile_pic_path}}" class="rounded-circle account-img mt-3" alt="woman avatar"height="300" width="300">
     </div>
+    <div class="card-body">
+      <h4 class="card-title text-center"> <p id="usern"><a href="{{url_for('main.user_posts',username = current_user.username)}}"><span><strong>{{current_user.username|title}}</strong></span> </a> </p> </h4>
+     
+      
+      <hr>
+      <p> {{current_user.email}} </p>
+      <p><i class="fas fa-quote-left"></i> {{current_user.bio}} <i class="fas fa-quote-right"></i> </p>
+      <button class="btn btn-sm btn-info" id="showform"> Update Profile</button>
+    </div>
+      
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+      <div class="container mt-4" >
+        <div id="profileupdate">
+          <h2>Update Your Profile Here</h2>
+            {{wtf.quick_form(form)}}
+        </div>
+      </div>
+  </div>
+  
 </div>
-
-{%endblock%}
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-8 col-md-10 mx-auto">
+        <ul class="list-inline text-center">
+          <li class="list-inline-item">
+            <a href="https://twitter.com/login" target="_blank">
+              <span class="fa-stack fa-lg">
+                <i class="fas fa-circle fa-stack-2x"></i>
+                <i class="fab fa-twitter fa-stack-1x fa-inverse"></i>
+              </span>
+            </a>
+          </li>
+          <li class="list-inline-item">
+            <a href="https://www.instagram.com/" target="_blank">
+              <span class="fa-stack fa-lg">
+                <i class="fas fa-circle fa-stack-2x"></i>
+                <i class="fab fa-instagram fa-stack-1x fa-inverse"></i>
+              </span>
+            </a>
+          </li>
+          <li class="list-inline-item">
+            <a href="https://github.com/EssyMwangi" target="_blank">
+              <span class="fa-stack fa-lg">
+                <i class="fas fa-circle fa-stack-2x"></i>
+                <i class="fab fa-github fa-stack-1x fa-inverse"></i>
+              </span>
+            </a>
+          </li>
+        </ul>
+        <p class="copyright text-muted text-center">
+          Copyright &copy; Essy Mwangi 2020
+        </p>
+      </div>
+    </div>
+  </div>
+</footer>
+{% endblock %}
