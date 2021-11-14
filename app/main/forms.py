@@ -1,6 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import (StringField, TextAreaField,
-                    SubmitField, SelectField)
+from wtforms import (StringField, TextAreaField, SubmitField, SelectField)
 from wtforms.validators import Required
 
 class PostForm(FlaskForm):

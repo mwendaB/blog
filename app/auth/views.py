@@ -1,6 +1,7 @@
-from flask import (render_template, redirect, url_for,
-                  flash, request)
+from flask import (render_template, redirect, url_for,flash, request)
 from flask_login import login_user, logout_user, login_required
+
+from app import email
 from . import auth
 from ..models import User
 from .forms import SignUpForm, LoginForm
@@ -19,8 +20,6 @@ def register():
         db.session.add(user)
         db.session.commit()
 
-        # mail_message("Welcome to 60 seconds",
-        #              "email/welcome", user.email, user = user)
         return redirect(url_for("auth.login"))
     title = "Sign Up to 60 Seconds"
     return render_template("auth/signup.html", 
@@ -32,9 +31,12 @@ def login():
     login_form = LoginForm()
     if login_form.validate_on_submit():
         user = User.query.filter_by(email = login_form.email.data).first()
-        if user is not None and user.verify_password(login_form.password.data):
+    
+        if   user is not None and user.verify_password(login_form.password.data):
             login_user(user, login_form.remember.data)
             return redirect(request.args.get("next") or url_for("main.index"))
+
+            
 
         flash("Invalid Username or Password")
     
@@ -42,6 +44,30 @@ def login():
     return render_template("auth/login.html",
                             login_form = login_form,
                             title = title)
+
+# def login():
+#   '''
+#   view function that signs in an existing user
+#   '''
+#   Login_Form=SignUpForm()
+
+#   if Login_Form.validate_on_submit():
+#     user=User.query.filter_by(email = Login_Form.email.data).first()
+    
+#     if user is None:
+#       flash('Enter a valid Username')
+
+#     elif  user is not None and user.pass_hash==Login_Form.password.data:
+
+#       login_user(user,Login_Form.remember.data)
+
+#       return redirect(request.args.get('next') or url_for('main.index'))
+
+#     flash('Invalid Password')  
+
+#   title ="login"    
+#   return render_template('auth/login.html',Login_Form=Login_Form,title=title)
+
 
 @auth.route("/logout")
 @login_required

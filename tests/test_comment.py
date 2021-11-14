@@ -6,7 +6,7 @@ class TestPost(unittest.TestCase):
     def setUp(self):
         self.user_Brian = User(first_name = "Brian",
                                 last_name = "Mwenda",
-                                username = "Mwenda",
+                                username = "MwendaB",
                                 password = "easy",
                                 email = "brianmwenda255@gmail.com")
         self.new_post = Post(post_title = "Blog",
