@@ -6,11 +6,11 @@
   <div class="collapse navbar-collapse" id="navbarSupportedContent-4">
           <ul class="navbar-nav mr-auto">
               <li class="nav-item">
-                <a class="nav-link" href="{{url_for('main.index')}}">View All Blogs</a>
+                <a class="nav-link" href="{{url_for('main.index')}}">View Blogs</a>
               </li>
               {% if current_user.is_authenticated %}
               <li class="nav-item">
-                <a class="nav-link " id="ref" href="{{url_for('main.new_blog')}}">Write A Blog Post</a>
+                <a class="nav-link " id="ref" href="{{url_for('main.new_blog')}}">Create new Blog Post</a>
               </li>
               {% endif %}
 

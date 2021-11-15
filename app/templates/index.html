@@ -3,15 +3,10 @@
 {% block content %}
  
   <header >
-    <div class="container landing">
-        <div class="row ">
-            <div class="col-md-9 " style="text-align: center; color: white;"><h1 >Mwenda Blog</h1></div>
-        </div>
-
+    <div class="container-fluid landing">
         <div class="row">
             <div class="col-md-8 ">
                 {% for blog in blogs.items %}
-                    
                         <hr>
                         <div class="row">
                             <div class="col-md-12">
@@ -53,7 +48,7 @@
                 {% endfor %}  
 
             </div>
-            <div class="container" style="color: white;">
+            <div class="container" style="color: white; font-size: x-large;">
                 <div class="col-lg-8 col-md-10 mx-auto">
                     <div  class="site-heading">
                         <span">
